@@ -16,13 +16,14 @@ classdef robot_kin
         end
 
         function [X] = forward_kin(obj, q1, q2)
+            %METHOD0 Computes forward kinematics
             X(:,1) = obj.L2*cos(q1).*cos(q2);
             X(:,2) = obj.L2*sin(q1).*cos(q2);
             X(:,3) = obj.L2*sin(q2) + obj.L1;
         end
 
         function [theta_1, theta_2] = inv_kin(obj, X)
-            %METHOD0 Computes inverse kinematics given cartesian
+            %METHOD1 Computes inverse kinematics given cartesian
             %coordinates
             D = (X(3)-obj.L1)/obj.L2;
 
@@ -43,7 +44,7 @@ classdef robot_kin
         end
         
         function J = jacobian(obj, q)
-            %METHOD1 Computes robot jacobian for given joint configuration
+            %METHOD2 Computes robot jacobian for given joint configuration
             J = [-obj.L2*cos(q(2))*sin(q(1))  -obj.L2*cos(q(1))*sin(q(2));
                   obj.L2*cos(q(2))*cos(q(1))  -obj.L2*sin(q(1))*sin(q(2));
                   0                            obj.L2*cos(q(2))          ];

@@ -12,15 +12,12 @@ classdef controller
         d_err     = [0; 0];
         q;
         dq;
-        %  Trajectory params not initialized because length unknown
         poly_1;
         poly_2;
-        %T;
     end
 
     properties (Access = public)
-       T; 
-       num = 0;
+       T;
     end
     
     methods
@@ -39,7 +36,6 @@ classdef controller
             if func_ind < 1
                 func_ind = 1;
             end
-            obj.num = obj.num + 1;
             coeff_1 = obj.poly_1(func_ind,:);
             coeff_2 = obj.poly_2(func_ind,:);
         end
