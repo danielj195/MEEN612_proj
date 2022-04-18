@@ -1,42 +1,19 @@
-syms t q1(t) q2(t) x(t) y(t) z(t);
+% syms t q1(t) q2(t) x(t) y(t) z(t);
 T = pi;
 %T = 2*pi;
 a1 = 0.38;
 a2 = 0.24;
+max_vel = 0.6;
 
 %Sampling trajectory
 t = 0:0.025:T;
 
-[q1, q2, dq1, dq2, ddq1, ddq2, dddq1, dddq2] = trajectory_gen_proj(a1,a2,t);
+% [q1, q2, dq1, dq2, ddq1, ddq2, dddq1, dddq2] = trajectory_gen_proj(a1,a2,t);
 
-%Interpolation Matrices
-poly_1 = zeros(length(q1),8);  %coefficients for joint 1
-poly_2 = zeros(length(q1),8);  %coefficients for joint 2
+loxo = Loxodrome(t,a1,a2);
+[q1, q2, dq1, dq2, ddq1, ddq2, dddq1, dddq2] = loxo.generate_traj();
+[poly_1, poly_2] = loxo.interpolate_traj(t,q1, q2, dq1, dq2, ddq1, ddq2, dddq1, dddq2);
 
-
-for i = 1:length(q1)-1
-    f = i+1;
-    %Interpolation Matrix
-    M = [1   t(i)  t(i)^2   t(i)^3     t(i)^4     t(i)^5      t(i)^6      t(i)^7;
-         0    1    2*t(i)  3*t(i)^2   4*t(i)^3   5*t(i)^4    6*t(i)^5   7*t(i)^6;
-         0    0      2      6*t(i)   12*t(i)^2   20*t(i)^3  30*t(i)^4   42*t(i)^5;
-         0    0      0        6        24*t(i)   60*t(i)^2  120*t(i)^3  210*t(i)^4;
-         1   t(f)  t(f)^2   t(f)^3     t(f)^4     t(f)^5      t(f)^6      t(f)^7;
-         0    1    2*t(f)  3*t(f)^2   4*t(f)^3   5*t(f)^4    6*t(f)^5   7*t(f)^6;
-         0    0      2      6*t(f)   12*t(f)^2   20*t(f)^3  30*t(f)^4   42*t(f)^5;
-         0    0      0        6        24*t(f)   60*t(f)^2  120*t(f)^3  210*t(f)^4];
-
-    %Interpolation for q1
-    state_1 = [q1(i); dq1(i); ddq1(i); dddq1(i); q1(f); dq1(f); ddq1(f); dddq1(f)]; %INITIALIZING BEFORE WE HAVE VALUES!!!!
-    %state_1 = [q1(i); dq1(i); ddq1(i); q1(f); dq1(f); ddq1(f)]; %INITIALIZING BEFORE WE HAVE VALUES!!!!
-    A1 = pinv(M)*state_1;
-    poly_1(i,:) = A1;
-    %Interpolation for q2
-    state_2 = [q2(i); dq2(i); ddq2(i); dddq2(i); q2(f); dq2(f); ddq2(f); dddq2(f)];
-    %state_2 = [q2(i); dq2(i); ddq2(i); q2(f); dq2(f); ddq2(f)];
-    A2 = pinv(M)*state_2;
-    poly_2(i,:) = A2;
-end
 
 tspan = [0 T];
 k=10000;
@@ -45,13 +22,20 @@ damp = 0.98;
 gamma = k;
 % q_d = [pi/4; pi/4];
 %y0 = [q1(1) q2(1) dq1(1) dq2(1)];
-%y0 = [0 0 0 0];
-y0 = [q1(1) q2(1) dq1(1) dq2(1) 1 1 0.5 1.5 0.1 0.5 0.5 0.5];
+y0 = [0 0 0 0];
+%y0 = [q1(1) q2(1) dq1(1) dq2(1) 1 1 0.5 1.5 0.1 0.5 0.5 0.5];
 %[time,y] = ode45(@(time,y)pd_controller_612_proj(time,y,poly_1,poly_2,t,wn,damp),tspan,y0);
 %[time,y] = ode45(@(time,y)pd_regulation_612_proj(time,y,q_d,k,k),tspan,y0);
-[time,y] = ode45(@(time,y)adaptive_controller_612_proj(time,y,poly_1,poly_2,t,a2, gamma),tspan,y0);
+%[time,y] = ode45(@(time,y)adaptive_controller_612_proj(time,y,poly_1,poly_2,t,a2, gamma),tspan,y0);
+adapt = adaptive_controller(poly_1, poly_2, t);
+pd = pd_controller(poly_1, poly_2, t);
+% [time,y] = ode45(@(time,y)adapt.adaptive_control_law(time, y),tspan,y0);
+[time,y] = ode45(@(time,y)pd.pd_control_law(time, y),tspan,y0);
 
-[q1_d, q2_d, dq1_d, dq2_d, ddq1_d, ddq2_d, dddq1_d, dddq2_d] = trajectory_gen_proj(a1,a2,time);
+
+% [q1_d, q2_d, dq1_d, dq2_d, ddq1_d, ddq2_d, dddq1_d, dddq2_d] = trajectory_gen_proj(a1,a2,time);
+loxo2 = Loxodrome(time,a1,a2);
+[q1_d, q2_d, dq1_d, dq2_d, ddq1_d, ddq2_d, dddq1_d, dddq2_d] = loxo2.generate_traj();
 
 s1 = (y(:,3)-dq1_d) + (y(:,1)-q1_d);
 s2 = (y(:,4)-dq2_d) + (y(:,2)-q2_d);
@@ -153,8 +137,4 @@ plot(time,y(:,12))
 xlabel('t')
 title('Parameters')
 legend('J1', 'J2', 'J3', 'I_2y', 'I_1z', 'J4', 'J5', 'J6')
-% 
-% 
-% 
-% 
-% 
+
